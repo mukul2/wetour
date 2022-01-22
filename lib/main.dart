@@ -65,6 +65,8 @@ class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
   double lat = 0;
   double long = 0;
+  final GlobalKey<ScaffoldState> _key = GlobalKey(); // Create a key
+
 
   String nearbyPlaces = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?keyword=nature&location=0%2C0&radius=1500&type=point_of_interest&key=AIzaSyDOrDoiG0aLER7Y8cv2QhNr182Z0H5pMVw";
 @override
@@ -404,8 +406,88 @@ print(nearbyPlaces);
       }
     }
   return SafeArea(
-    child: Scaffold(
+    child: Scaffold(drawer: Container(height: MediaQuery.of(context).size.height,width: MediaQuery.of(context).size.width*0.8 ,
+      color: Colors.white,
+      child: Column(
+        children: [
+          StreamBuilder<User?>(
+              stream: FirebaseAuth.instance.userChanges(),
+              builder: (BuildContext context, AsyncSnapshot<User?> snapshot,) {
+                if (snapshot.hasData && snapshot.data!.uid!=null){
+                  return Column(children: [
+                    Container(width: MediaQuery.of(context).size.width*0.8  ,height:  MediaQuery.of(context).size.width*0.7 ,child: Stack(
+                      children: [
+                        Image.network(snapshot.data!.photoURL!,width: MediaQuery.of(context).size.width*0.8  ,height:  MediaQuery.of(context).size.width*0.7 ,fit: BoxFit.cover,),
+
+
+                        
+                        Container(height:  MediaQuery.of(context).size.width*0.7,width:  MediaQuery.of(context).size.width*0.8,decoration: BoxDecoration(
+                          //  color: Colors.redAccent,
+                          gradient: LinearGradient(
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                            colors: [
+                              Colors.black,
+                              Colors.transparent,
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),),
+                        Align(alignment: Alignment.bottomLeft,child:  StreamBuilder<User?>(
+                            stream: FirebaseAuth.instance.userChanges(),
+                            builder: (BuildContext context, AsyncSnapshot<User?> snapshot,) {
+                              if (snapshot.hasData && snapshot.data!.uid!=null){
+                                print("usr id "+snapshot.data!.uid!.toString() );
+                                return  StreamBuilder<QuerySnapshot>(
+
+                                    stream: FirebaseFirestore.instance.collection("users").where("uid",isEqualTo:snapshot.data!.uid! ).snapshots(),
+                                    builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshotUserData,) {
+                                      if (snapshotUserData.hasData ){
+                                        return  ListTile(title: Text(snapshotUserData.data!.docs.first.get("displayName"),style: TextStyle(color: Colors.white)),subtitle: Text(snapshotUserData.data!.docs.first.get("email"),style: TextStyle(color: Colors.white)),);
+
+
+                                      }else{
+                                        return Container(height: 0,width: 0,);
+                                      }
+
+                                    });
+
+                              }else{
+                                return Container(height: 0,width: 0,);
+                              }
+
+                            }),)
+
+                      ],
+                    )),
+                    StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance.collection("users").where("uid",isEqualTo:snapshot.data!.uid! ).snapshots(),
+                        builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot,) {
+                          if (snapshot.hasData ){
+                            return ListTile(title: Text("Logout"),onTap: (){
+                              auth.signOut();
+                            },);
+
+                          }else{
+                            return Container(height: 0,width: 0,);
+                          }
+
+                        })
+
+
+                  ]);
+
+                }else{
+                  return Container(height: 0,width: 0,);
+                }
+
+              }),
+
+        ],
+      ),
+    ),
       resizeToAvoidBottomInset: true,
+      key: _key,
       body: SingleChildScrollView(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -414,7 +496,7 @@ print(nearbyPlaces);
               Container(width: width,height: height*0.4, child: Image.asset("assets/back.jpeg",fit: BoxFit.cover,)),
               Container(height: height*0.09,child: Stack(children: [
                 Align(alignment: Alignment.centerLeft,child: IconButton(icon: Icon(Icons.menu,color: Colors.white,),onPressed: (){
-
+                  _key.currentState!.openDrawer();
                 },),),
 
                 Align(alignment: Alignment.centerRight,child:Row(
@@ -723,6 +805,7 @@ print(nearbyPlaces);
 
 
                                                             firestore.collection("users").add({ "email":auth.currentUser!.email,"displayName":displayName,"uid":auth.currentUser!.uid,"photo":valuePhotoLink}).then((value) {
+                                                              Navigator.pushNamed(context, "/");
                                                               Navigator.popUntil(context, (Route<dynamic> predicate) => predicate.isFirst);
                                                             });
 
